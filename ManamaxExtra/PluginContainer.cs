@@ -2,6 +2,7 @@ using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.Hooks;
+using System.IO;
 
 namespace ManamaxExtra
 {
@@ -33,13 +34,13 @@ namespace ManamaxExtra
         private static void ReloadConfig(ReloadEventArgs args)
         {
             LoadConfig();
-            args.Player?.SendSuccessMessage("[{0}] Konfigurasi telah dimuat ulang.", typeof(ManaMaxExtra).Name);
+            args.Player?.SendSuccessMessage("[ManaMaxExtra] Konfigurasi telah dimuat ulang.");
         }
 
         public override void Initialize()
         {
             GeneralHooks.ReloadEvent += ReloadConfig;
-            ServerApi.Hooks.GameUpdate.Register(this, new HookHandler<EventArgs>(OnUpdate));
+            ServerApi.Hooks.GameUpdate.Register(this, OnUpdate);
             PlayerHooks.PlayerPostLogin += OnPlayerPostLogin;
         }
 
@@ -49,7 +50,7 @@ namespace ManamaxExtra
             {
                 GeneralHooks.ReloadEvent -= ReloadConfig;
                 PlayerHooks.PlayerPostLogin -= OnPlayerPostLogin;
-                ServerApi.Hooks.GameUpdate.Deregister(this, new HookHandler<EventArgs>(OnUpdate));
+                ServerApi.Hooks.GameUpdate.Deregister(this, OnUpdate);
             }
             base.Dispose(disposing);
         }
@@ -60,7 +61,6 @@ namespace ManamaxExtra
             {
                 if (tsplayer != null)
                 {
-                    // Set nilai maksimum mana saat pemain login
                     CheckAndSetPlayerMana(tsplayer);
                 }
             }
@@ -71,7 +71,7 @@ namespace ManamaxExtra
             int index = tsplayer.Index;
             Player tplayer = tsplayer.TPlayer;
 
-            // Jika nilai maksimum mana melebihi batas custom, set ke nilai custom.
+            // Jika statManaMax2 melebihi nilai yang diizinkan, set ke CustomManaMax.
             if (tplayer.statManaMax2 > Config.CustomManaMax)
             {
                 tplayer.statManaMax2 = Config.CustomManaMax;
@@ -89,28 +89,28 @@ namespace ManamaxExtra
                     Player tplayer = tsplayer.TPlayer;
                     Item heldItem = tplayer.HeldItem;
 
-                    // Jika pemain sedang menggunakan item dan itemUseTime sudah habis
+                    // Jika pemain mulai menggunakan item dan waktu penggunaan telah habis
                     if (!controlUseItemOld[index] && tplayer.controlUseItem && itemUseTime[index] <= 0)
                     {
                         int type = heldItem.type;
 
-                        // Cek jika item yang digunakan adalah mana star (item id 109)
+                        // Cek jika item yang digunakan adalah mana star (item ID 109)
                         if (type == 109)
                         {
-                            // Jika mana maksimum masih di bawah batas custom, tambahkan mana
+                            // Jika statManaMax2 masih di bawah batas CustomManaMax
                             if (tplayer.statManaMax2 < Config.CustomManaMax)
                             {
                                 // Kurangi jumlah item di inventory
                                 tplayer.inventory[tplayer.selectedItem].stack--;
                                 tsplayer.SendData(PacketTypes.PlayerSlot, "", index, (float)tplayer.selectedItem);
-                                
-                                // Tambahkan nilai mana maksimum, sekarang +20 per penggunaan
+
+                                // Tambahkan stat mana maksimum sebanyak 20
                                 tplayer.statManaMax2 += 20;
-                                
-                                // Kirim update ke klien
+
+                                // Kirim update ke klien agar tampilan mana diperbarui
                                 tsplayer.SendData(PacketTypes.PlayerMana, "", index);
                             }
-                            // Jika mana maksimum melebihi batas, pastikan diset ke nilai custom
+                            // Jika mana melebihi batas, set ke nilai CustomManaMax
                             else if (tplayer.statManaMax2 > Config.CustomManaMax)
                             {
                                 tplayer.statManaMax2 = Config.CustomManaMax;
